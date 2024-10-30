@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>D3.js Visualization</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+      .bar:hover {
+        fill: orange;
+      }
+
+      /* Axis label styles */
+      .axis text {
+        font: 10px sans-serif;
+      }
+
+      .axis path,
+      .axis line {
+        fill: none;
+        stroke: #000;
+        shape-rendering: crispEdges;
+      }
+
+      /* Rotate x-axis labels */
+      .x-axis text {
+        text-anchor: end;
+        transform: rotate(-65deg);
+      }
+    </style>
+  </head>
+  <body>
+    <h1>D3.js Visualization</h1>
+    <div id="chart"></div>
+    <script>
+      const csvData = `Location,MinMax_Normalized
+Alabama,0.431311706629055
+Alaska,0.9246826516220028
+Arizona,0.4629055007052186
+Arkansas,0.764456981664316
+California,0.5588152327221438
+Colorado,0.5489421720733427
+Connecticut,0.0658674188998589
+Delaware,0.3952045133991537
+District of Columbia,1.0
+Florida,0.2194640338504936
+Georgia,0.3719322990126939
+Hawaii,0.2204513399153737
+Idaho,0.1947813822284908
+Illinois,0.2595204513399153
+Indiana,0.2861777150916784
+Iowa,0.2583921015514809
+Kansas,0.4390691114245416
+Kentucky,0.1562764456981664
+Louisiana,0.7409026798307476
+Maine,0.0
+Maryland,0.416361071932299
+Massachusetts,0.3084626234132581
+Michigan,0.5045133991537376
+Minnesota,0.2500705218617771
+Mississippi,0.1998589562764456
+Missouri,0.5425952045133992
+Montana,0.4437235543018335
+Nebraska,0.2531734837799718
+Nevada,0.4946403385049365
+New Hampshire,0.0314527503526093
+New Jersey,0.1404795486600846
+New Mexico,0.955148095909732
+New York,0.459802538787024
+North Carolina,0.4256699576868829
+North Dakota,0.2486600846262341
+Ohio,0.2684062059238364
+Oklahoma,0.446262341325811
+Oregon,0.3372355430183356
+Pennsylvania,0.249083215796897
+Rhode Island,0.0973201692524682
+South Carolina,0.5472496473906912
+South Dakota,0.3866008462623412
+Tennessee,0.7310296191819465
+Texas,0.4634696755994358
+Utah,0.195345557122708
+Vermont,0.167277856135402
+Virginia,0.1843441466854724
+Washington,0.3840620592383639
+West Virginia,0.2462623413258109
+Wisconsin,0.2732016925246826
+Wyoming,0.1390691114245416`;
+
+      const data = d3.csvParse(csvData, function (d) {
+        return {
+          Location: d.Location,
+          MinMax_Normalized: +d.MinMax_Normalized,
+        };
+      });
+
+      const margin = { top: 20, right: 20, bottom: 120, left: 60 },
+        width = 960 - margin.left - margin.right,
+        height = 500 - margin.top - margin.bottom;
+
+      const svg = d3
+        .select("#chart")
+        .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .append("g")
+        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      const x = d3
+        .scaleBand()
+        .range([0, width])
+        .domain(
+          data.map(function (d) {
+            return d.Location;
+          })
+        )
+        .padding(0.1);
+
+      const y = d3.scaleLinear().range([height, 0]).domain([0, 1]);
+
+      svg
+        .append("g")
+        .attr("class", "x-axis")
+        .attr("transform", "translate(0," + height + ")")
+        .call(d3.axisBottom(x))
+        .selectAll("text")
+        .attr("dx", "-0.8em")
+        .attr("dy", "-0.15em")
+        .attr("transform", "rotate(-65)");
+
+      svg.append("g").call(d3.axisLeft(y));
+
+      svg
+        .selectAll(".bar")
+        .data(data)
+        .enter()
+        .append("rect")
+        .attr("class", "bar")
+        .attr("x", function (d) {
+          return x(d.Location);
+        })
+        .attr("width", x.bandwidth())
+        .attr("y", function (d) {
+          return y(d.MinMax_Normalized);
+        })
+        .attr("height", function (d) {
+          return height - y(d.MinMax_Normalized);
+        })
+        .attr("fill", "steelblue");
+    </script>
+  </body>
+</html>
