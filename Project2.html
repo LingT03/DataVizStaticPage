@@ -3,25 +3,36 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Project 2</title>
-    <!-- Bootstrap CSS -->
+    <title>Unemployment Trends</title>
     <link
       href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
       rel="stylesheet"
     />
+    <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
+      .custom-tooltip {
+        position: absolute !important; /* Ensure absolute positioning */
+        background-color: white;
+        border: 1px solid #ccc;
+        padding: 5px;
+        border-radius: 3px;
+        font-size: 12px;
+        pointer-events: none;
+        z-index: 10; /* Ensure the tooltip appears above other elements */
+      }
+      .legend {
+        font-size: 14px;
+        font-weight: bold;
+      }
       body {
         font-family: Arial, sans-serif;
-        margin: 20px;
       }
-      section {
-        margin-bottom: 20px;
+      svg {
+        width: 100%; /* Responsive SVG */
+        height: auto;
       }
-      h2 {
-        color: #333;
-      }
-      .card-title {
-        font-weight: bold;
+      .x-axis text {
+        font-size: 0.8rem;
       }
       header {
         background-color: #333;
@@ -34,15 +45,180 @@
   </head>
   <body>
     <header>
-      <h1>Project 2 Visualization</h1>
+      <h1 class="h3">Project 2 Visualization</h1>
     </header>
-    <main class="container">
-      
-        
-    </main>
-    <!-- Bootstrap JS and dependencies -->
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <div class="container mt-4">
+      <h2 class="text-center mb-3">Unemployment Trends by State</h2>
+      <div class="row">
+        <div class="col-12 text-center mb-3">
+          <label for="state-select" class="form-label">Select a State:</label>
+          <select
+            id="state-select"
+            class="form-select d-inline-block w-auto"
+          ></select>
+        </div>
+      </div>
+      <div class="row">
+        <div class="col-12">
+          <div id="chart-container" class="position-relative">
+            <svg
+              viewBox="0 0 900 500"
+              preserveAspectRatio="xMinYMin meet"
+            ></svg>
+            <div class="custom-tooltip" style="display: none"></div>
+          </div>
+        </div>
+      </div>
+      <div class="row mt-4">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <p>
+                <strong>Data source and inspiration:</strong>
+                <a
+                  href="https://www.bls.gov/charts/state-employment-and-unemployment/state-unemployment-rates-animated.htm"
+                  target="_blank"
+                  >Bureau of Labor Statistics</a
+                >
+              </p>
+              <p>
+                general trend regardless of the state, is a spike in
+                unemployment rates at the start of 2020. This is likely due to
+                the pandemic (Covid-19) and the subsequent lockdowns.
+                <br />
+                <br />
+                Rather than a Choropleth map, I wanted to implement a line chart
+                to add in the transition of states visualized through users
+                selections. This way it provides users an interactive experience
+                in visualizing unemployment rates by state.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      d3.csv("Data/unemployment.csv").then((data) => {
+        const states = data.map((d) => d.State);
+        const months = Object.keys(data[0]).filter((col) => col !== "State");
+
+        const dropdown = d3.select("#state-select");
+        dropdown
+          .selectAll("option")
+          .data(states)
+          .enter()
+          .append("option")
+          .text((d) => d)
+          .attr("value", (d) => d);
+
+        const svg = d3.select("svg");
+        const margin = { top: 40, right: 30, bottom: 60, left: 50 };
+        const width = 900 - margin.left - margin.right;
+        const height = 500 - margin.top - margin.bottom;
+        const g = svg
+          .append("g")
+          .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        const tooltip = d3.select(".custom-tooltip");
+
+        const x = d3.scalePoint().domain(months).range([0, width]).padding(0.5);
+        const y = d3.scaleLinear().range([height, 0]);
+
+        const xAxis = d3
+          .axisBottom(x)
+          .tickValues(months.filter((_, i) => i % 12 === 0));
+        const yAxis = d3.axisLeft(y);
+
+        g.append("g")
+          .attr("class", "x-axis")
+          .attr("transform", `translate(0,${height})`);
+
+        g.append("g").attr("class", "y-axis");
+
+        const legend = svg
+          .append("text")
+          .attr("class", "legend")
+          .attr("x", 10)
+          .attr("y", 20)
+          .text("");
+
+        const line = d3
+          .line()
+          .x((d, i) => x(months[i]))
+          .y((d) => y(+d));
+
+        function update(selectedState) {
+          const stateData = data.find((d) => d.State === selectedState);
+          const unemploymentRates = months.map((month) => +stateData[month]);
+
+          y.domain([0, d3.max(unemploymentRates)]);
+
+          g.select(".y-axis").transition().duration(1000).call(yAxis);
+
+          const path = g.selectAll(".line").data([unemploymentRates]);
+
+          path
+            .enter()
+            .append("path")
+            .attr("class", "line")
+            .merge(path)
+            .transition()
+            .duration(1000)
+            .attr("fill", "none")
+            .attr("stroke", "steelblue")
+            .attr("stroke-width", 2)
+            .attr("d", line);
+
+          path.exit().remove();
+
+          const circles = g.selectAll(".point").data(unemploymentRates);
+
+          circles
+            .enter()
+            .append("circle")
+            .attr("class", "point")
+            .merge(circles)
+            .attr("cx", (d, i) => x(months[i]))
+            .attr("cy", (d) => y(+d))
+            .attr("r", 4)
+            .attr("fill", "steelblue")
+            .on("mouseover", function (event, d) {
+              const index = unemploymentRates.indexOf(d);
+              const month = months[index];
+              tooltip
+                .style("display", "block")
+                .style("left", event.pageX - 70 + "px")
+                .style("top", event.pageY - 260 + "px")
+                .html(
+                  `<strong>Date:</strong> ${month}<br><strong>Value:</strong> ${d}`
+                );
+            })
+            .on("mouseout", () => {
+              tooltip.style("display", "none");
+            });
+
+          circles.exit().remove();
+
+          g.select(".x-axis")
+            .transition()
+            .duration(1000)
+            .call(xAxis)
+            .selectAll("text")
+            .attr("transform", "rotate(-45)")
+            .style("text-anchor", "end");
+
+          legend.text(`Unemployment Rate: ${selectedState}`);
+        }
+
+        update(states[0]);
+
+        dropdown.on("change", function () {
+          const selectedState = this.value;
+          update(selectedState);
+        });
+      });
+    </script>
   </body>
 </html>
